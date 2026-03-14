@@ -25,6 +25,7 @@ This is an implementation that actually works, containing a hackable script so y
   - [Promise Tags](#promise-tags)
   - [Exit Codes](#exit-codes)
 - [Structure](#structure)
+- [Continued Development](#continued-development)
 - [Skills](#skills)
   - [Available Skills](#available-skills)
   - [Skills Directory Structure](#skills-directory-structure)
@@ -256,6 +257,24 @@ Ralph uses semantic tags to communicate status:
 ├── history/            # Iteration output logs
 └── skills/             # Shared skills (source of truth)
 ```
+
+## Continued Development
+
+As Ralph implements tasks, you might notice that you want some tweaks, features or even bug fixes.<br/>
+To do so, you need to continue using the `prd-creator` skill to update the PRD and task list.
+
+For example:
+
+```
+I would like to expand the PRD / tasks with these tasks:
+
+- there is a bug in X that should be fixed by doing Y
+- create a new feature that implement Z
+
+etc.
+```
+
+It's fine to add multiple tasks at once.
 
 ## Skills
 
