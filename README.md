@@ -34,6 +34,8 @@ This is an implementation that actually works, containing a hackable script so y
   - [Vitest configuration](#vitest-configuration)
   - [Running with a different agentic CLI](#running-with-a-different-agentic-cli)
   - [Starting from scratch](#starting-from-scratch)
+  - [Debugging](#debugging)
+- [How to inspect the sandbox and debug](#how-to-inspect-the-sandbox-and-debug)
 - [License](#license)
 
 ---------------------------------
@@ -437,6 +439,38 @@ npm i @vitejs/plugin-react @testing-library/dom @testing-library/jest-dom @testi
 ```
 
 It is recommended that you add skills for your specific language and framework. See [skills.sh](https://skills.sh) to discover existing skills.
+
+### Debugging
+
+## How to inspect the sandbox and debug
+
+You might be wondering... if this is not a Docker container, how can you see what's going on inside Docker!?
+How to debug/install things?
+
+That's quite straightforward.
+
+You first need to run:
+
+```bash
+docker sandbox list
+```
+
+Note down the name of the sandbox, e.g. `claude-ralph-loop`.
+
+And then you can run bash into any of the sandboxes like so:
+```bash
+docker sandbox exec -it <sandbox-name> bash # e.g. docker sandbox exec -it claude-ralph-loop bash
+```
+
+And you have full control over the sandbox, just like a regular container. You can install packages, run commands, etc.
+
+You can also also run Claude Code inside the sandbox (make sure to navigate to the project directory first).
+
+```bash
+docker sandbox exec -it <sandbox-name> bash
+cd /path/to/your/project # this is the same path as the path in the root machine, e.g. /Users/your-username/Documents/your-project
+claude
+```
 
 ## License
 
