@@ -266,7 +266,7 @@ To do so, you need to continue using the `prd-creator` skill to update the PRD a
 For example:
 
 ```
-I would like to expand the PRD / tasks with these tasks:
+I would like to expand the PRD. Use the prd-creator skill to create these tasks:
 
 - there is a bug in X that should be fixed by doing Y
 - create a new feature that implement Z
