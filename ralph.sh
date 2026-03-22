@@ -98,7 +98,7 @@ $(cat $SCRIPT_DIR/.agent/PROMPT.md)"
   export PROMPT_CONTENT
   export DOCKER_DEFAULT_PLATFORM=linux/amd64 # Needed for Playwright.
 
-  script -q "$OUTPUT_FILE" bash -c 'docker sandbox run claude . -- --model opus --output-format stream-json --verbose -p "$PROMPT_CONTENT"' >/dev/null 2>&1 &
+  script -q "$OUTPUT_FILE" bash -c 'docker sandbox run claude . -- --effort max --model opus --output-format stream-json --verbose -p "$PROMPT_CONTENT"' >/dev/null 2>&1 &
   AGENT_PID=$!
 
   # Track position in output file for incremental reading
