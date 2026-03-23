@@ -51,6 +51,14 @@ When stuck after all possible solutions exhausted, output one of the following t
 <promise>BLOCKED:brief description</promise>
 ```
 
+**Exit immediately (no workarounds) for environment constraints you cannot fix from inside the sandbox:**
+- `Blocked by network policy` → firewall, only user can change from host
+- Missing/invalid credentials or API keys
+- Required system service unavailable
+- Hardware/arch incompatibility with no known fix
+
+These are not bugs. No amount of retries, alternative downloads, or package managers will help. Output BLOCKED on first failure.
+
 2. **DECIDE** — need human input: lib choices, architecture, unclear requirements, breaking changes. Output:
 
 ```
