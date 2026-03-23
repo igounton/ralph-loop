@@ -10,7 +10,9 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 # Source the required modules
 source "$PROJECT_ROOT/scripts/lib/constants.sh"
+source "$PROJECT_ROOT/scripts/lib/terminal.sh"
 source "$PROJECT_ROOT/scripts/lib/timing.sh"
+source "$PROJECT_ROOT/scripts/lib/output.sh"
 
 # Test tracking
 TESTS_PASSED=0
@@ -550,6 +552,134 @@ test_detect_step_typechecking() {
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# TEST: detect_step with Bash tool events (from parse_json_content)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+test_detect_step_bash_testing() {
+  test_start "detect_step identifies Testing from Bash tool event"
+  local result=$(detect_step "Bash command=npm test")
+  if [ "$result" = "Testing" ]; then
+    test_pass
+  else
+    test_fail "Expected 'Testing', got '$result'"
+  fi
+}
+
+test_detect_step_bash_linting() {
+  test_start "detect_step identifies Linting from Bash tool event"
+  local result=$(detect_step "Bash command=eslint src/")
+  if [ "$result" = "Linting" ]; then
+    test_pass
+  else
+    test_fail "Expected 'Linting', got '$result'"
+  fi
+}
+
+test_detect_step_bash_building() {
+  test_start "detect_step identifies Implementing from Bash build command"
+  local result=$(detect_step "Bash command=npm run build")
+  if [ "$result" = "Implementing" ]; then
+    test_pass
+  else
+    test_fail "Expected 'Implementing', got '$result'"
+  fi
+}
+
+test_detect_step_bash_typecheck() {
+  test_start "detect_step identifies Typechecking from Bash tool event"
+  local result=$(detect_step "Bash command=tsc --noEmit")
+  if [ "$result" = "Typechecking" ]; then
+    test_pass
+  else
+    test_fail "Expected 'Typechecking', got '$result'"
+  fi
+}
+
+test_detect_step_bash_install() {
+  test_start "detect_step identifies Installing from Bash tool event"
+  local result=$(detect_step "Bash command=npm install lodash")
+  if [ "$result" = "Installing" ]; then
+    test_pass
+  else
+    test_fail "Expected 'Installing', got '$result'"
+  fi
+}
+
+test_detect_step_bash_playwright() {
+  test_start "detect_step identifies Testing from Bash playwright event"
+  local result=$(detect_step "Bash command=npx playwright test")
+  if [ "$result" = "Testing" ]; then
+    test_pass
+  else
+    test_fail "Expected 'Testing', got '$result'"
+  fi
+}
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# TEST: parse_json_content
+# ═══════════════════════════════════════════════════════════════════════════════
+
+test_parse_json_text_field() {
+  test_start "parse_json_content extracts text field"
+  local result=$(parse_json_content '{"type":"content_block_delta","delta":{"text":"hello world"}}')
+  if echo "$result" | grep -q "hello world"; then
+    test_pass
+  else
+    test_fail "Expected 'hello world', got '$result'"
+  fi
+}
+
+test_parse_json_tool_use_read() {
+  test_start "parse_json_content extracts Read tool_use event"
+  local result=$(parse_json_content '{"type":"content_block_start","content_block":{"type":"tool_use","name":"Read","input":{"file_path":"/src/main.ts"}}}')
+  if [ "$result" = "Read file_path=/src/main.ts" ]; then
+    test_pass
+  else
+    test_fail "Expected 'Read file_path=/src/main.ts', got '$result'"
+  fi
+}
+
+test_parse_json_tool_use_bash() {
+  test_start "parse_json_content extracts Bash tool_use with command"
+  local result=$(parse_json_content '{"type":"content_block_start","content_block":{"type":"tool_use","name":"Bash","input":{"command":"npm test"}}}')
+  if [ "$result" = "Bash command=npm test" ]; then
+    test_pass
+  else
+    test_fail "Expected 'Bash command=npm test', got '$result'"
+  fi
+}
+
+test_parse_json_tool_use_grep() {
+  test_start "parse_json_content extracts Grep tool_use with pattern"
+  local result=$(parse_json_content '{"type":"content_block_start","content_block":{"type":"tool_use","name":"Grep","input":{"pattern":"TODO"}}}')
+  if [ "$result" = "Grep pattern=TODO" ]; then
+    test_pass
+  else
+    test_fail "Expected 'Grep pattern=TODO', got '$result'"
+  fi
+}
+
+test_parse_json_tool_use_webfetch() {
+  test_start "parse_json_content extracts WebFetch tool_use (no extra fields)"
+  local result=$(parse_json_content '{"type":"content_block_start","content_block":{"type":"tool_use","name":"WebFetch","input":{"url":"https://example.com"}}}')
+  if [ "$result" = "WebFetch" ]; then
+    test_pass
+  else
+    test_fail "Expected 'WebFetch', got '$result'"
+  fi
+}
+
+test_parse_json_non_json() {
+  test_start "parse_json_content returns non-JSON as-is"
+  local result=$(parse_json_content "just plain text")
+  if [ "$result" = "just plain text" ]; then
+    test_pass
+  else
+    test_fail "Expected 'just plain text', got '$result'"
+  fi
+}
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # TEST: Full flow - detect → index → record
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -691,6 +821,26 @@ main() {
   test_detect_step_verifying
   test_detect_step_waiting
   test_detect_step_typechecking
+  echo ""
+
+  # Bash tool detection tests
+  echo "--- Bash Tool Detection Tests ---"
+  test_detect_step_bash_testing
+  test_detect_step_bash_linting
+  test_detect_step_bash_building
+  test_detect_step_bash_typecheck
+  test_detect_step_bash_install
+  test_detect_step_bash_playwright
+  echo ""
+
+  # parse_json_content tests
+  echo "--- parse_json_content Tests ---"
+  test_parse_json_text_field
+  test_parse_json_tool_use_read
+  test_parse_json_tool_use_bash
+  test_parse_json_tool_use_grep
+  test_parse_json_tool_use_webfetch
+  test_parse_json_non_json
   echo ""
 
   # Full flow tests

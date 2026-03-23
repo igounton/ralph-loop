@@ -16,12 +16,38 @@ cleanup() {
   fi
   SPINNER_PID=""
 
-  # Kill Agent process if still running
+  # Kill Agent process tree if still running
+  # The process tree is: script -> bash -> docker sandbox run
+  # Killing just the script PID leaves the docker sandbox running
   if [ -n "$AGENT_PID" ] && kill -0 "$AGENT_PID" 2>/dev/null; then
+    # Kill child processes first (bash -> docker), then the script process
+    pkill -TERM -P "$AGENT_PID" 2>/dev/null || true
     kill "$AGENT_PID" 2>/dev/null || true
     wait "$AGENT_PID" 2>/dev/null || true
   fi
   AGENT_PID=""
+
+  # Stop all running Docker sandboxes for this workspace
+  # Finds sandboxes by matching the workspace path, regardless of agent prefix
+  if command -v docker &>/dev/null && command -v jq &>/dev/null; then
+    local sandboxes
+    sandboxes=$(docker sandbox ls --json 2>/dev/null \
+      | jq -r --arg ws "$SCRIPT_DIR" '(.vms // .sandboxes // [])[] | select(.status == "running" and (.workspaces[] == $ws)) | .name' 2>/dev/null)
+
+    if [ -n "$sandboxes" ]; then
+      echo -e "  ${Y}📦 Stopping sandbox...${R}"
+      # Stop all matching sandboxes (pass all names at once)
+      docker sandbox stop $sandboxes 2>/dev/null &
+      local stop_pid=$!
+      # Timeout after 5 seconds to avoid hanging on exit
+      ( sleep 5 && kill "$stop_pid" 2>/dev/null ) &>/dev/null &
+      local timeout_pid=$!
+      if wait "$stop_pid" 2>/dev/null; then
+        echo -e "  ${GR}✅ Sandbox stopped${R}"
+      fi
+      kill "$timeout_pid" 2>/dev/null || true
+    fi
+  fi
 
   # Remove temporary files
   [[ -n "$STEP_FILE" ]] && rm -f "$STEP_FILE" 2>/dev/null || true

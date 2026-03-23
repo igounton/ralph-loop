@@ -11,13 +11,39 @@ parse_json_content() {
   # For example, Claude stream-json outputs {"type":"content_block_delta","delta":{"text":"..."}}
   # or {"type":"text","text":"..."} etc.
 
-  # Extract text from delta
-  local text=$(echo "$json_line" | grep -o '"text":"[^"]*"' | head -1 | sed 's/"text":"//;s/"$//')
+  # Extract text from delta (use jq if available for proper escaped quote handling)
+  local text=""
+  if command -v jq &>/dev/null; then
+    text=$(echo "$json_line" | jq -r '.delta.text // .text // empty' 2>/dev/null)
+  else
+    text=$(echo "$json_line" | grep -o '"text":"[^"]*"' | head -1 | LC_ALL=C sed 's/"text":"//;s/"$//' 2>/dev/null)
+  fi
   if [ -n "$text" ]; then
-    # Unescape common JSON escapes
-    # JSON \n -> actual newline, \t -> actual tab, etc.
-    text=$(echo "$text" | sed 's/\\n/\'$'\n''/g; s/\\t/\'$'\t''/g; s/\\"/"/g; s/\\\\/\\/g')
+    # Unescape common JSON escapes (only needed for grep fallback, jq handles this)
+    if ! command -v jq &>/dev/null; then
+      text=$(echo "$text" | LC_ALL=C sed 's/\\n/\'$'\n''/g; s/\\t/\'$'\t''/g; s/\\"/"/g; s/\\\\/\\/g' 2>/dev/null)
+    fi
     echo "$text"
+    return
+  fi
+
+  # Extract tool_use events (have "name" but no "text")
+  # Produces strings like "Read file_path=/src/main.ts" or "Bash command=npm test"
+  # that detect_step() patterns can match
+  local tool_name=$(echo "$json_line" | grep -o '"name":"[^"]*"' | head -1 | LC_ALL=C sed 's/"name":"//;s/"$//' 2>/dev/null)
+  if [ -n "$tool_name" ]; then
+    local file_path=$(echo "$json_line" | grep -o '"file_path":"[^"]*"' | head -1 | LC_ALL=C sed 's/"file_path":"//;s/"$//' 2>/dev/null)
+    local pattern=$(echo "$json_line" | grep -o '"pattern":"[^"]*"' | head -1 | LC_ALL=C sed 's/"pattern":"//;s/"$//' 2>/dev/null)
+    local cmd=$(echo "$json_line" | grep -o '"command":"[^"]*"' | head -1 | LC_ALL=C sed 's/"command":"//;s/"$//' 2>/dev/null)
+    if [ -n "$file_path" ]; then
+      echo "$tool_name file_path=$file_path"
+    elif [ -n "$pattern" ]; then
+      echo "$tool_name pattern=$pattern"
+    elif [ -n "$cmd" ]; then
+      echo "$tool_name command=$cmd"
+    else
+      echo "$tool_name"
+    fi
     return
   fi
 
@@ -44,7 +70,7 @@ strip_ansi() {
   #             0x1C-0x1F (FS through US) - excludes ESC (0x1B) for sed to process
   # sed handles: ESC sequences, OSC-like patterns, caret notation
   # Note: OSC pattern uses ^ anchor but also handles after caret removal via second pass
-  echo "$input" | sed \
+  echo "$input" | LC_ALL=C sed \
     -e 's/\x1b\[[0-9;?]*[A-Za-z]//g' \
     -e 's/\x1b\][^\x07]*\x07//g' \
     -e 's/\x1b\][^\x1b]*\x1b\\//g' \
@@ -53,9 +79,9 @@ strip_ansi() {
     -e 's/\x1b.//g' \
     -e 's/\^[][A-Z@\\^_]//g' \
     -e 's/^0;[^]]*]//g' \
-    -e 's/<u0;//g' \
-    | tr -d '\000-\010\013\014\016-\032\034-\037' \
-    | sed -e 's/^0;[^]]*]//g'
+    -e 's/<u0;//g' 2>/dev/null \
+    | LC_ALL=C tr -d '\000-\010\013\014\016-\032\034-\037' 2>/dev/null \
+    | LC_ALL=C sed -e 's/^0;[^]]*]//g' 2>/dev/null
 }
 
 # Strip ANSI from a file and write to output file
@@ -68,7 +94,7 @@ strip_ansi_file() {
   # Then tr removes remaining control characters (excluding newline 0x0A, CR 0x0D)
   # tr range excludes ESC (0x1B = octal 033) which sed already handled
   # Final sed pass cleans up OSC patterns that were hidden by control chars
-  sed \
+  LC_ALL=C sed \
     -e 's/\x1b\[[0-9;?]*[A-Za-z]//g' \
     -e 's/\x1b\][^\x07]*\x07//g' \
     -e 's/\x1b\][^\x1b]*\x1b\\//g' \
@@ -78,8 +104,8 @@ strip_ansi_file() {
     -e 's/\^[][A-Z@\\^_]//g' \
     -e 's/^0;[^]]*]//g' \
     -e 's/<u0;//g' \
-    "$input_file" | tr -d '\000-\010\013\014\016-\032\034-\037' \
-    | sed -e 's/^0;[^]]*]//g' \
+    "$input_file" 2>/dev/null | LC_ALL=C tr -d '\000-\010\013\014\016-\032\034-\037' 2>/dev/null \
+    | LC_ALL=C sed -e 's/^0;[^]]*]//g' 2>/dev/null \
     > "$output_file"
 }
 

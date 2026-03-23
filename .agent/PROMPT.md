@@ -1,3 +1,5 @@
+> ⛔ **ONE TASK PER INVOCATION** — Complete one task from @.agent/tasks.json, commit, output `<promise>TASK-{ID}:DONE</promise>`, and STOP. Do NOT start the next task. Do NOT use parallel agents for multiple tasks.
+
 ## Overview
 
 You are implementing the project described in @.agent/prd/SUMMARY.md
@@ -28,7 +30,7 @@ Tasks are listed in @.agent/tasks.json
 7. Run `tsc` and unit tests project-wide
 8. All tests must pass. Broke unrelated test? Fix it before proceeding.
 9. When tests pass, set `passes: true` in `tasks.json` for the task you completed.
-10. Log entry → `.agent/logs/LOG.md` (date, brief summary, screenshot path)
+10. Log entry → `.agent/logs/LOG.md` (date, brief summary, screenshot path, newest at the top)
 11. Update `.agent/STRUCTURE.md` if dirs changed. Exclude dotfiles, tests and config.
 12. Commit changes, using the Conventional Commit format.
 
@@ -52,6 +54,7 @@ When stuck after all possible solutions exhausted, output one of the following t
 ```
 
 **Exit immediately (no workarounds) for environment constraints you cannot fix from inside the sandbox:**
+
 - `Blocked by network policy` → firewall, only user can change from host
 - Missing/invalid credentials or API keys
 - Required system service unavailable

@@ -113,7 +113,7 @@ $(cat $SCRIPT_DIR/.agent/PROMPT.md)"
       # Read new content if file has grown
       if [ "$CURRENT_SIZE" -gt "$LAST_POS" ]; then
         # Read new lines
-        tail -c +$((LAST_POS + 1)) "$OUTPUT_FILE" 2>/dev/null | while IFS= read -r line; do
+        while IFS= read -r line; do
           if [ -n "$line" ]; then
             # Parse JSON and extract text content
             parsed=$(parse_json_content "$line")
@@ -126,11 +126,11 @@ $(cat $SCRIPT_DIR/.agent/PROMPT.md)"
               update_preview_line "$parsed"
             fi
           fi
-        done
+        done < <(tail -c +$((LAST_POS + 1)) "$OUTPUT_FILE" 2>/dev/null)
         LAST_POS=$CURRENT_SIZE
       fi
     fi
-    sleep 0.2
+    sleep 0.2 || true
   done
 
   wait "$AGENT_PID" || true
@@ -140,14 +140,14 @@ $(cat $SCRIPT_DIR/.agent/PROMPT.md)"
   if [ -f "$OUTPUT_FILE" ]; then
     CURRENT_SIZE=$(stat -f%z "$OUTPUT_FILE" 2>/dev/null || stat -c%s "$OUTPUT_FILE" 2>/dev/null || echo "0")
     if [ "$CURRENT_SIZE" -gt "$LAST_POS" ]; then
-      tail -c +$((LAST_POS + 1)) "$OUTPUT_FILE" 2>/dev/null | while IFS= read -r line; do
+      while IFS= read -r line; do
         if [ -n "$line" ]; then
           parsed=$(parse_json_content "$line")
           if [ -n "$parsed" ]; then
             echo "$parsed" >> "$FULL_OUTPUT_FILE"
           fi
         fi
-      done
+      done < <(tail -c +$((LAST_POS + 1)) "$OUTPUT_FILE" 2>/dev/null)
     fi
   fi
 
@@ -307,7 +307,7 @@ $(cat $SCRIPT_DIR/.agent/PROMPT.md)"
   if [ -n "$STEP_TIMES_OUTPUT" ]; then
     echo -e "${G}      └──${R} $STEP_TIMES_OUTPUT"
   fi
-  sleep 2
+  sleep 2 || true
 done
 
 # Calculate final elapsed time

@@ -224,6 +224,8 @@ detect_step() {
     echo "Implementing"
   elif echo "$line" | grep -qiE "(compiling|bundling|transpiling)"; then
     echo "Implementing"
+  elif echo "$line" | grep -qiE "Bash.*command=.*(build|compile|bundle)"; then
+    echo "Implementing"
 
   # COMMITTING - git operations
   elif echo "$line" | grep -qiE "(git commit|git add|committing|staged for commit)"; then
@@ -237,6 +239,8 @@ detect_step() {
   elif echo "$line" | grep -qiE "(test|spec).*(pass|fail|skip|pending)"; then
     echo "Testing"
   elif echo "$line" | grep -qiE "(running|executing) (tests|test suite)"; then
+    echo "Testing"
+  elif echo "$line" | grep -qiE "Bash.*command=.*(test|e2e|spec|jest|vitest|playwright|pytest)"; then
     echo "Testing"
 
   # DEBUGGING - investigating errors, fixing issues
@@ -254,9 +258,13 @@ detect_step() {
   # LINTING - code style and formatting
   elif echo "$line" | grep -qiE "(eslint|biome|lint|prettier|formatting|stylelint)"; then
     echo "Linting"
+  elif echo "$line" | grep -qiE "Bash.*command=.*(lint|eslint|biome|prettier|stylelint)"; then
+    echo "Linting"
 
   # TYPECHECKING - type validation
   elif echo "$line" | grep -qiE "(npm run typecheck|tsc|typescript|type.?check|mypy|pyright)"; then
+    echo "Typechecking"
+  elif echo "$line" | grep -qiE "Bash.*command=.*(typecheck|tsc|mypy|pyright)"; then
     echo "Typechecking"
 
   # WRITING TESTS - creating test files
@@ -271,6 +279,8 @@ detect_step() {
   elif echo "$line" | grep -qiE "(pip|poetry|cargo|go get|brew) install"; then
     echo "Installing"
   elif echo "$line" | grep -qiE "(installing|adding|updating) (dependency|dependencies|package)"; then
+    echo "Installing"
+  elif echo "$line" | grep -qiE "Bash.*command=.*(npm install|yarn add|pnpm add|pip install|brew install)"; then
     echo "Installing"
 
   # WEB RESEARCH - fetching docs, searching web

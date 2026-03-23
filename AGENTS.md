@@ -25,6 +25,10 @@ Signs a file needs splitting:
 - "Utils" file becoming a junk drawer
 - Component doing data fetching + transformation + rendering
 
+## Task Execution
+
+- **One task per invocation.** When working from `.agent/tasks.json`, complete exactly one task, commit, and stop. Never batch multiple tasks.
+
 ## Code Style
 
 1. Prefer writing clear code and use inline comments sparingly

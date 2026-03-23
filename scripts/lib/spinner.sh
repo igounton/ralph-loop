@@ -60,7 +60,7 @@ update_spinner_step() {
     echo "$detected" > "$STEP_FILE"
 
     # Clean step name (remove trailing spaces) for timing tracking
-    local clean_step=$(echo "$detected" | sed 's/ *$//')
+    local clean_step=$(echo "$detected" | LC_ALL=C sed 's/ *$//' 2>/dev/null)
 
     # Record timing if step changed
     if [ "$clean_step" != "$CURRENT_STEP_NAME" ]; then
@@ -77,7 +77,7 @@ update_preview_line() {
   [[ "$line" =~ ^[[:space:]]*$ ]] && return
   # Sanitize: replace newlines/tabs with spaces, collapse multiple spaces
   # This prevents multi-line content from breaking cursor positioning
-  line=$(echo "$line" | tr '\n\t\r' ' ' | sed 's/  */ /g; s/^ *//; s/ *$//')
+  line=$(echo "$line" | LC_ALL=C tr '\n\t\r' ' ' 2>/dev/null | LC_ALL=C sed 's/  */ /g; s/^ *//; s/ *$//' 2>/dev/null | head -1)
   # Skip if sanitization resulted in empty string
   [ -z "$line" ] && return
   # Write to preview file (spinner reads this)
