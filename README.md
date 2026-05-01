@@ -4,7 +4,7 @@
 
 Ralph is a long-running AI agent loop. Ralph automates software development tasks by iteratively working through a task list until completion. This allows for long running agent loops, effectively enabling AI to code for days at a time.
 
-This is an implementation that actually works, containing a hackable script so you can configure it to your env and favorite agentic AI CLI. It's set up by default to use Claude Code in a Docker sandbox, but supports [many other agentic AI CLIs](#running-with-a-different-agentic-cli).
+This is an implementation that actually works, containing a hackable script so you can configure it to your env and favorite agentic AI CLI. It's set up by default to use Claude Code in Docker Sandboxes, and supports [multiple Docker Sandboxes agents](#running-with-a-different-agentic-cli).
 
 #### 👉 [Watch the video](https://www.youtube.com/watch?v=3TL8Ez66I3o) for an in-depth walkthrough.
 
@@ -14,7 +14,7 @@ This is an implementation that actually works, containing a hackable script so y
   - [(Optional) Set up code base](#optional-set-up-code-base)
   - [1️⃣ Step 1: Install Ralph](#1️⃣-step-1-install-ralph)
   - [2️⃣ Step 2: Create a PRD + task list](#2️⃣-step-2-create-a-prd--task-list)
-  - [3️⃣ Step 3: Set up the agent inside Docker sandbox](#3️⃣-step-3-set-up-the-agent-inside-docker-sandbox)
+  - [3️⃣ Step 3: Set up the agent inside Docker Sandboxes](#3️⃣-step-3-set-up-the-agent-inside-docker-sandboxes)
   - [4️⃣ Step 4: Run Ralph](#4️⃣-step-4-run-ralph)
 - [Running the Ralph Loop with custom options](#running-the-ralph-loop-with-custom-options)
   - [(Optional) Adjusting to your language/framework](#optional-adjusting-to-your-languageframework)
@@ -30,6 +30,7 @@ This is an implementation that actually works, containing a hackable script so y
   - [Available Skills](#available-skills)
   - [Skills Directory Structure](#skills-directory-structure)
 - [Reference](#reference)
+  - [Docker Sandboxes](#docker-sandboxes)
   - [Playwright configuration](#playwright-configuration)
   - [Vitest configuration](#vitest-configuration)
   - [Running with a different agentic CLI](#running-with-a-different-agentic-cli)
@@ -63,7 +64,7 @@ npx @pageai/ralph-loop
 ### 2️⃣ Step 2: Create a PRD + task list
 
 Use the `prd-creator` skill to generate a PRD from your requirements.<br/>
-Open up Claude Code or Cursor etc. and prompt it with **your requirements**. Like so:
+Open up Claude Code or Cursor etc., **switch to plan mode**, and prompt it with **your requirements**. Like so:
 
 ```
 Use the prd-creator skill to help me create a PRD and task list for the below requirements.
@@ -108,15 +109,23 @@ Requirements:
 Then, follow the Skill's instructions and verify the PRD and then tasks.<br/>
 **It is highly recommended that you review individual task requirements before starting the loop. Review EACH TASK INDIVIDUALLY.**
 
-### 3️⃣ Step 3: Set up the agent inside Docker sandbox
+### 3️⃣ Step 3: Set up the agent inside Docker Sandboxes
 
-Authenticate inside the Docker sandbox before running Ralph. Run:
+Install and sign in to Docker Sandboxes first. See Docker's [AI overview](https://docs.docker.com/ai-overview/) and [Docker Sandboxes docs](https://docs.docker.com/ai/sandboxes/) for the official setup flow.
+
+Authenticate your chosen Docker Sandboxes agent before running Ralph. Claude is the default:
 
 ```bash
-docker sandbox run claude .
+sbx run --name <ralph-sandbox-name> claude .
 ```
 
-And follow the instructions to log in into Claude Code.
+To use a different supported agent, replace `claude` with `codex`, `copilot`, `cursor`, `gemini`, or `opencode`:
+
+```bash
+sbx run --name <ralph-sandbox-name> codex .
+```
+
+And follow the instructions to log in to that agent. Ralph names sandboxes as `ralph-<agent>-<current-dir>-<hash8>`, for example `ralph-claude-my-app-a1b2c3d4`; the exact name is printed when Ralph starts and in authentication error messages.
 
 👉 Answer "Yes" to `Bypass Permissions mode`, that's the exact reason why you are using the Docker sandbox.
 
@@ -128,7 +137,7 @@ And follow the instructions to log in into Claude Code.
 ./ralph.sh -n 50 # Run Ralph Loop with 50 iterations
 ```
 
-> ✍️ Note: the first iteration will be spent on ensuring the sandbox environment is set up correctly. Expect 5 minutes to complete.
+> ✍️ Note: the first iteration will be spent on ensuring the named sandbox environment is set up correctly. Expect 5 minutes to complete.
 
 ## Running the Ralph Loop with custom options
 
@@ -143,6 +152,14 @@ And follow the instructions to log in into Claude Code.
 
 # Run exactly one iteration
 ./ralph.sh --once
+
+# Run with a different supported agent
+./ralph.sh --agent codex
+./ralph.sh -a cursor -n 5
+
+# Pass extra options to the selected agent
+./ralph.sh --agent codex -- --model gpt-5.5
+./ralph.sh -a gemini -- --model pro
 
 # Show help
 ./ralph.sh --help
@@ -222,9 +239,8 @@ The agent will check this file each iteration and if it finds any critical work,
 ## Support
 
 The `ralph.sh` script is designed to be hackable.
-It is configured to use Claude Code in a Docker sandbox by default, but with a one-liner change you can change it to use any other agentic AI CLI.
-
-Check the `ralph.sh` script around `# This is the main command loop.` for the main command loop.
+It is configured to use Claude Code in Docker Sandboxes by default, and you can select another supported agent with `--agent`.
+Each run uses a deterministic sandbox name in the form `ralph-<agent>-<current-dir>-<hash8>`, so different agents get separate sandboxes for the same project. On exit or double Ctrl+C, Ralph stops only the named sandbox for the current invocation.
 
 > NB: skills are supported by all major agentic AI CLIs via symlinks.
 
@@ -318,6 +334,15 @@ Skills are symlinked from `.agent/skills/` to multiple locations for cross-tool 
 
 ## Reference
 
+### Docker Sandboxes
+
+Docker Sandboxes runs coding agents in isolated microVMs. Ralph uses the standalone `sbx` CLI and starts agents with a deterministic `--name` so the sandbox can be reused and stopped cleanly.
+
+Useful Docker references:
+- [Docker AI overview](https://docs.docker.com/ai-overview/) explains how Docker Sandboxes fits with Gordon, Model Runner, MCP Toolkit, and Docker Agent.
+- [Docker Sandboxes](https://docs.docker.com/ai/sandboxes/) covers installation, usage, security, credentials, and troubleshooting.
+- [Supported Docker Sandboxes agents](https://docs.docker.com/ai/sandboxes/agents/) lists the agent CLIs Docker supports.
+
 ### Playwright configuration
 
 If you are using Playwright, here is a recommended configuration:
@@ -409,19 +434,27 @@ vi.mock('next/link', () => ({
 
 ### Running with a different agentic CLI
 
-If you want to use a different agentic CLI, you can adjust the `ralph.sh` script to reflect your CLI of choice.
-
-Check the `ralph.sh` script around `# This is the main command loop.` for the main command loop.
-
-Replace `docker sandbox run claude . --` with the your favorite CLI. Remember to also update the options after the `--`.
+Ralph can run several Docker Sandboxes agents without editing the script:
 
 ```bash
-docker sandbox run codex . # for Codex CLI
-docker sandbox run gemini . # for Gemini CLI
+./ralph.sh --agent claude    # default
+./ralph.sh --agent codex
+./ralph.sh --agent copilot
+./ralph.sh --agent cursor
+./ralph.sh --agent gemini
+./ralph.sh --agent opencode
 ```
 
-Docker currently supports: `claude`, `codex`, `opencode`,`copilot`, `gemini`, `cagent`, `kiro` and more.
-See all supported agentic AI CLIs in [Docker's docs](https://docs.docker.com/ai/sandboxes/agents/).
+You can also pass agent-specific options after Ralph's `--` separator:
+
+```bash
+./ralph.sh --agent codex -- --model gpt-5.3-codex
+./ralph.sh --agent gemini -- --model pro
+```
+
+Ralph currently supports: `claude`, `codex`, `copilot`, `cursor`, `gemini`, and `opencode`.
+See Docker's full list of supported agentic AI CLIs in [Docker's docs](https://docs.docker.com/ai/sandboxes/agents/).
+Because the agent name is part of Ralph's sandbox name, switching agents creates or reuses that agent's own sandbox for the project.
 
 ### Starting from scratch
 
@@ -452,24 +485,24 @@ That's quite straightforward.
 You first need to run:
 
 ```bash
-docker sandbox list
+sbx ls
 ```
 
-Note down the name of the sandbox, e.g. `claude-ralph-loop`.
+Note down the name of the sandbox for the agent you ran, e.g. `ralph-claude-my-app-a1b2c3d4`. Ralph also prints this name when it starts.
 
 And then you can run bash into any of the sandboxes like so:
 ```bash
-docker sandbox exec -it <sandbox-name> bash # e.g. docker sandbox exec -it claude-ralph-loop bash
+sbx exec -it <sandbox-name> bash # e.g. sbx exec -it ralph-claude-my-app-a1b2c3d4 bash
 ```
 
 And you have full control over the sandbox, just like a regular container. You can install packages, run commands, etc.
 
-You can also also run Claude Code inside the sandbox (make sure to navigate to the project directory first).
+You can also run the agent CLI inside the sandbox (make sure to navigate to the project directory first).
 
 ```bash
-docker sandbox exec -it <sandbox-name> bash
+sbx exec -it <sandbox-name> bash
 cd /path/to/your/project # this is the same path as the path in the root machine, e.g. /Users/your-username/Documents/your-project
-claude
+claude # or codex, copilot, cursor, gemini, opencode
 ```
 
 ## License

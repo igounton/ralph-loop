@@ -10,7 +10,8 @@ Help beginner-level developers transform software ideas into comprehensive PRD.m
 4. Keep tone friendly and supportive, use plain language
 5. Track assumptions throughout - they'll go in the PRD
 
-**Important**: Grill the user for information to make sure you have all the required details in order to implement the PRD.
+**CRITICAL**: Interview the user relentlessly about every aspect of this plan until we reach a shared understanding. Walk down each branch of the design tree, resolving dependencies between decisions one-by-one. For each question, provide the user's recommended answer. Ask the questions one at a time.
+If a question can be answered by exploring the codebase, explore the codebase instead.
 
 ## Topics to Cover
 
@@ -26,7 +27,8 @@ Gather information on these aspects:
 8. Third-party integrations (if relevant)
 9.  [optional] Wireframes or diagrams
 10. [optional] Competitive landscape
-11. Dependencies
+11. Execution prerequisites: database access, service access, MCPs, documentation, environment variables, and login/test users
+12. Dependencies
 
 ## Questioning Patterns
 
@@ -62,6 +64,7 @@ Copy and track progress through these steps:
 ```
 PRD Progress:
 - [ ] Gather all required information via questioning
+- [ ] Verify project prerequisites and create `.env.local` placeholders
 - [ ] Create executive summary for user validation
 - [ ] Get user confirmation to proceed
 - [ ] Research competitive landscape (if not done)
@@ -70,7 +73,7 @@ PRD Progress:
 - [ ] Iterate based on feedback
 ```
 
-### Step 1: Gather Information
+### Step 1: Gather Information and Verify Prerequisites
 
 Use AskUserQuestion tool repeatedly to clarify:
 - Core features that are unclear
@@ -79,6 +82,30 @@ Use AskUserQuestion tool repeatedly to clarify:
 - Any assumptions that could significantly impact the PRD
 
 Ask related questions per tool call for efficiency. Provide 3-4 clear options per question with trade-off descriptions. Mark recommended options with "(Recommended)".
+
+#### Mandatory Prerequisite Gate
+
+Before finalizing Step 1 or moving to executive summary validation, verify what the implementation needs to run and be tested.
+
+Explore the repository first when possible. Look for `.env`, `.env.example`, `.env.local`, config files, package dependencies, database clients, migrations/schema files, SDK imports, auth routes, README setup instructions, and existing test credentials or seed data. If a question can be answered by exploring the codebase, explore the codebase instead of asking the user.
+
+Collect and document:
+- Database access requirements and whether the agent/user can verify connectivity
+- Required MCP servers/tools and whether they are installed and authenticated
+- Required third-party service accounts, API dashboards, CLIs, SDKs, or docs
+- Required environment variable names, where they are written, and what each variable is used for
+- Login/test user requirements, including role, permissions, and how to create or request the user
+- Any local setup commands needed before implementation or verification
+
+Create or update `PROJECT_ROOT/.env.local` during this step with placeholder values for every required environment variable name discovered. Never write real secret values, passwords, API keys, tokens, or connection strings. If `.env.local` already exists, preserve existing values and append missing variable names with placeholders only. Make it clear to the user that they must add real values manually.
+
+In the PRD, record environment variable names and the target file path only. Do not include secret values or real credentials. Example:
+
+```markdown
+- `STRIPE_SECRET_KEY`: required for Stripe server API calls; written to `PROJECT_ROOT/.env.local`; value must be filled manually by the user.
+```
+
+If any prerequisite cannot be verified, ask the user case-by-case whether to block PRD finalization until it is resolved or proceed with an explicit prerequisite gap. Record the decision in the PRD.
 
 ### Step 2: Executive Summary Validation
 
@@ -100,7 +127,7 @@ Use WebSearch to:
 
 ### Step 4: Generate PRD
 
-Create PRD containing all identified requirements and use an ID to track each requirement, formatted as `TASK-${ID}`.
+Create PRD containing all identified requirements and use an ID to track each requirement, formatted as `TASK-${ID}`. Reserve `TASK-1` for prerequisite verification in the generated implementation tasks. Start feature and implementation requirement IDs at `TASK-2`.
 
 Include the following sections:
 - App overview, objectives and success criteria
@@ -109,11 +136,20 @@ Include the following sections:
 - Core features and functionality
 - Key user flows and journeys
 - Technical stack recommendations
+- Prerequisites and access
 - Conceptual data model
 - UI design principles (include wireframe analysis if provided)
 - Security considerations
 - Development phases/milestones
 - Assumptions and dependencies
+
+The `Prerequisites and Access` section must include:
+- Database access status
+- Required MCPs and authentication status
+- Required service documentation links
+- Required environment variable names and the target file path where placeholders were written
+- Login/test user requirements without passwords or secret values
+- Open prerequisite gaps and the user's proceed/block decision for each gap
 
 Save as: `PROJECT_ROOT/.agent/prd/PRD.md`
 
@@ -190,6 +226,9 @@ Before saving the PRD:
 
 - [ ] Asked clarifying questions with lettered options
 - [ ] Incorporated user's answers
+- [ ] Verified prerequisites before executive summary validation
+- [ ] Created or updated `PROJECT_ROOT/.env.local` with placeholder values only
+- [ ] Documented required environment variable names without secret values
 - [ ] User stories are small and specific
 - [ ] Functional requirements are numbered and unambiguous
 - [ ] Non-goals section defines clear boundaries

@@ -13,16 +13,101 @@ Only proceed after user confirmation.
 
 You should read the PRD markdown file located in `PROJECT_ROOT/.agent/prd/PRD.md`.
 Each task in the PRD will have a unique ID, formatted as `TASK-${ID}`.
-You should use this ID to generate the task list.
+Use those IDs to generate the task list, except `TASK-1` is always reserved for prerequisite verification.
 
 Copy and track progress:
 
 ```
 Task Generation Progress:
 - [ ] Analyze the complete PRD
+- [ ] Generate mandatory prerequisite verification task first
 - [ ] Generate task index in `PROJECT_ROOT/.agent/tasks.json`
 - [ ] Generate detailed spec for each task in `PROJECT_ROOT/.agent/tasks/TASK-${ID}.json`
 - [ ] Present complete task list to user for review
+```
+
+**CRITICAL**: If any of the tasks is unclear, interview the user relentlessly about every aspect of this plan until we reach a shared understanding. Walk down each branch of the design tree, resolving dependencies between decisions one-by-one. For each question, provide the user's recommended answer. Ask the questions one at a time.
+If a question can be answered by exploring the codebase, explore the codebase instead.
+
+## Mandatory First Task: Prerequisite Verification
+
+Every generated task list must start with `TASK-1: Verify project prerequisites and access`.
+
+Use the `Prerequisites and Access` section from `PROJECT_ROOT/.agent/prd/PRD.md` as the source of truth. This task must verify that implementation can safely begin before feature work starts.
+
+`TASK-1` must confirm:
+- `PROJECT_ROOT/.env.local` exists and contains placeholder entries for every required environment variable name from the PRD
+- The user has manually filled real local values where needed, without copying those values into the PRD, task specs, logs, or chat
+- Database access can be verified or the missing access is explicitly recorded
+- Required MCP servers/tools are available and authenticated, or gaps are explicitly recorded
+- Required service documentation links are available and relevant
+- Required login/test users exist or there are clear steps to create/request them
+- Any open prerequisite gaps have a user-approved proceed/block decision from the PRD
+
+All downstream implementation tasks that require these prerequisites must include `TASK-1` in `dependencies`.
+
+Use this exact shape for the first task, adapting names and details to the PRD:
+
+```json:PROJECT_ROOT/.agent/tasks/TASK-1.json
+{
+  "id": "TASK-1",
+  "title": "Verify project prerequisites and access",
+  "category": "setup",
+  "description": "Verify that required database access, MCPs, service documentation, environment variables, and login/test users are available before implementation begins.",
+  "acceptanceCriteria": [
+    "`PROJECT_ROOT/.env.local` exists with placeholder entries for every required environment variable name listed in the PRD",
+    "Real secret values are not written to the PRD, task specs, repository, logs, or chat",
+    "The user has manually filled required local secret values in `.env.local` where needed",
+    "Database connectivity is verified, or the missing access is recorded with a user-approved proceed/block decision",
+    "Required MCP servers/tools are installed and authenticated, or gaps are recorded with a user-approved proceed/block decision",
+    "Required service documentation links are available to the implementer",
+    "Required login/test users are available or documented with request/create steps, without passwords or secret values"
+  ],
+  "steps": [
+    {
+      "step": 1,
+      "description": "Read prerequisite requirements from the PRD",
+      "details": "Open `PROJECT_ROOT/.agent/prd/PRD.md` and review the `Prerequisites and Access` section. List required database access, MCPs, service docs, environment variable names, login/test users, and any open gaps.",
+      "pass": false
+    },
+    {
+      "step": 2,
+      "description": "Verify `.env.local` placeholder names",
+      "details": "Confirm `PROJECT_ROOT/.env.local` exists and contains every required environment variable name from the PRD. Add missing names with placeholder values only, such as `TODO_FILL_MANUALLY`. Do not write real secret values.",
+      "pass": false
+    },
+    {
+      "step": 3,
+      "description": "Confirm local secret values are filled manually",
+      "details": "Ask the user to confirm they filled real local values where needed. Never print, store, commit, or copy actual passwords, API keys, tokens, or connection strings into generated files or chat.",
+      "pass": false
+    },
+    {
+      "step": 4,
+      "description": "Verify database and service access",
+      "details": "Run the safest available read-only connectivity checks for the database and required services. If access cannot be verified, record the blocker or user-approved proceed decision before continuing.",
+      "pass": false
+    },
+    {
+      "step": 5,
+      "description": "Verify MCPs and service documentation",
+      "details": "Confirm required MCP servers/tools are available and authenticated. Confirm required documentation links from the PRD are accessible and sufficient for implementation.",
+      "pass": false
+    },
+    {
+      "step": 6,
+      "description": "Verify login/test user availability",
+      "details": "Confirm required login/test users exist with the needed roles and permissions, or document the exact steps and owner for creating/requesting them. Do not store passwords or secret values.",
+      "pass": false
+    }
+  ],
+  "dependencies": [],
+  "estimatedComplexity": "low",
+  "technicalNotes": [
+    "This task gates implementation. Do not start dependent feature tasks until required prerequisites are verified or explicitly approved as gaps.",
+    "Secrets must stay local and must never be committed or copied into PRD/task artifacts."
+  ]
+}
 ```
 
 ## Root task list format
@@ -223,12 +308,17 @@ Include notes about:
 Organize tasks into these categories. All examples use the full task spec format with step objects.
 
 > **IMPORTANT**: Examples below show 2 steps for brevity. Real tasks should include ALL steps needed to complete the task - typically 3-10 steps depending on complexity. Never truncate steps to fit a pattern.
+> In real generated task lists, `TASK-1` is always reserved for prerequisite verification.
+
+**0. setup** - Project readiness, access, environment variables, MCPs, and service documentation
+
+Use this category for the mandatory first task only unless the PRD requires additional setup tasks.
 
 **1. functional** - Core feature implementation and behavior
 
 ```json
 {
-  "id": "TASK-1",
+  "id": "TASK-2",
   "title": "User can create an account with email and password",
   "category": "functional",
   "description": "Implement user registration flow allowing new users to create accounts using email and password credentials.",
@@ -253,7 +343,7 @@ Organize tasks into these categories. All examples use the full task spec format
       "pass": false
     }
   ],
-  "dependencies": [],
+  "dependencies": ["TASK-1"],
   "estimatedComplexity": "medium"
 }
 ```
@@ -262,7 +352,7 @@ Organize tasks into these categories. All examples use the full task spec format
 
 ```json
 {
-  "id": "TASK-2",
+  "id": "TASK-3",
   "title": "Dashboard displays user's recent activity in a card layout",
   "category": "ui-ux",
   "description": "Show user's recent activity on the dashboard using a responsive card layout that works on desktop and mobile.",
@@ -294,7 +384,7 @@ Organize tasks into these categories. All examples use the full task spec format
 
 ```json
 {
-  "id": "TASK-3",
+  "id": "TASK-4",
   "title": "User profile table with required fields and relationships",
   "category": "data-model",
   "description": "Create users table with proper schema, constraints, and relationships to support authentication and profile features.",
@@ -318,6 +408,7 @@ Organize tasks into these categories. All examples use the full task spec format
       "pass": false
     }
   ],
+  "dependencies": ["TASK-1"],
   "technicalNotes": [
     "Use UUID v4 for primary keys to avoid sequential ID enumeration"
   ],
@@ -329,7 +420,7 @@ Organize tasks into these categories. All examples use the full task spec format
 
 ```json
 {
-  "id": "TASK-4",
+  "id": "TASK-5",
   "title": "POST /api/auth/login endpoint authenticates users",
   "category": "api-endpoint",
   "description": "Implement login endpoint that validates credentials and returns JWT token for authenticated sessions.",
@@ -353,7 +444,7 @@ Organize tasks into these categories. All examples use the full task spec format
       "pass": false
     }
   ],
-  "dependencies": ["TASK-3"],
+  "dependencies": ["TASK-4"],
   "technicalNotes": [
     "Never log passwords, even in error cases",
     "Use constant-time comparison for password to prevent timing attacks"
@@ -366,7 +457,7 @@ Organize tasks into these categories. All examples use the full task spec format
 
 ```json
 {
-  "id": "TASK-5",
+  "id": "TASK-6",
   "title": "Stripe payment processing integration works end-to-end",
   "category": "integration",
   "description": "Integrate Stripe for payment processing including checkout flow, webhook handling, and order status updates.",
@@ -390,7 +481,7 @@ Organize tasks into these categories. All examples use the full task spec format
       "pass": false
     }
   ],
-  "dependencies": ["TASK-3", "TASK-4"],
+  "dependencies": ["TASK-4", "TASK-5"],
   "technicalNotes": [
     "Always verify webhook signatures to prevent spoofed events",
     "Test with Stripe CLI: stripe listen --forward-to localhost:3000/api/webhooks/stripe"
@@ -403,7 +494,7 @@ Organize tasks into these categories. All examples use the full task spec format
 
 ```json
 {
-  "id": "TASK-6",
+  "id": "TASK-7",
   "title": "API endpoints enforce role-based access control",
   "category": "security",
   "description": "Implement middleware that enforces role-based access control on protected API endpoints.",
@@ -427,7 +518,7 @@ Organize tasks into these categories. All examples use the full task spec format
       "pass": false
     }
   ],
-  "dependencies": ["TASK-4"],
+  "dependencies": ["TASK-5"],
   "technicalNotes": [
     "Log failed auth attempts for security monitoring",
     "Consider rate limiting on auth endpoints to prevent brute force"
@@ -440,7 +531,7 @@ Organize tasks into these categories. All examples use the full task spec format
 
 ```json
 {
-  "id": "TASK-7",
+  "id": "TASK-8",
   "title": "API documentation covers all endpoints with examples",
   "category": "documentation",
   "description": "Create comprehensive API documentation using OpenAPI/Swagger that covers all endpoints with request/response examples.",
@@ -563,17 +654,24 @@ Save the complete task list as `PROJECT_ROOT/.agent/tasks.json`:
 ```json
 [
   {
-    "id": "TASK-${ID}",
-    "title": "User table with authentication fields",
-    "category": "data-model",
-    "specFilePath": ".agent/tasks/TASK-${ID}.json",
+    "id": "TASK-1",
+    "title": "Verify project prerequisites and access",
+    "category": "setup",
+    "specFilePath": ".agent/tasks/TASK-1.json",
     "passes": false
   },
   {
-    "id": "TASK-${ID}",
+    "id": "TASK-2",
+    "title": "User table with authentication fields",
+    "category": "data-model",
+    "specFilePath": ".agent/tasks/TASK-2.json",
+    "passes": false
+  },
+  {
+    "id": "TASK-3",
     "title": "POST /api/auth/register creates new user account",
     "category": "api-endpoint",
-    "specFilePath": ".agent/tasks/TASK-${ID}.json",
+    "specFilePath": ".agent/tasks/TASK-3.json",
     "passes": false
   }
   // ... continue until you cover all features in the PRD
@@ -581,7 +679,9 @@ Save the complete task list as `PROJECT_ROOT/.agent/tasks.json`:
 ```
 
 **Important:**
-When outputting tasks, create them, sequentially. Output them one by one so the user can review each.
+When outputting tasks, create them sequentially. Output them one by one so the user can review each.
+Each task output must include the `id` field first, exactly in the form `"id": "TASK-${ID}"`. `TASK-1` is reserved for prerequisite verification.
+If you output multiple tasks in one review iteration, every task object must include its own `id` field.
 *DO NOT* output in parallel.
 *DO NOT* use background agents.
 *DO NOT* use subagents.
@@ -593,7 +693,7 @@ Present the tasks to the user:
 "I've generated [NUMBER] implementation tasks based on your PRD, organized into [NUMBER] categories. These tasks provide a complete checklist for building and verifying every feature.
 
 The tasks are saved in `PROJECT_ROOT/.agent/tasks.json`. Developers should:
-1. Work through tasks in order (data-model → api-endpoint → ui-ux, etc.)
+1. Work through tasks in order (setup → data-model → api-endpoint → ui-ux, etc.)
 2. Complete all verification steps for each task
 3. Only mark `passes: true` after all steps verified
 4. Never remove or skip tasks
@@ -604,6 +704,7 @@ Would you like me to adjust the task breakdown or add more detail? Otherwise, I 
 
 For a simple "Todo List App" PRD with features: user auth, create/read/update/delete todos, mark complete, the task list should include approximately 40-60 tasks covering:
 
+- Prerequisite verification and access check (1 task, always first)
 - User table schema (1 task)
 - Todo table schema (1 task)
 - Auth endpoints: register, login, logout (3 tasks)

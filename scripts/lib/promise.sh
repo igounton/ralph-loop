@@ -12,16 +12,19 @@
 #   <promise>COMPLETE</promise>     - All tasks finished successfully
 #   <promise>BLOCKED:reason</promise>  - Agent is blocked and needs human help
 #   <promise>DECIDE:question</promise> - Agent needs human decision/clarification
+#   <promise>TASK-1:DONE</promise> - Task completed during this iteration
 #
 # Examples:
 #   <promise>COMPLETE</promise>
 #   <promise>BLOCKED:Missing API credentials for external service</promise>
 #   <promise>DECIDE:Should we use REST or GraphQL for the new endpoint?</promise>
+#   <promise>TASK-1:DONE</promise>
 
 # Regex patterns for promise tags
 PROMISE_COMPLETE_PATTERN='<promise>COMPLETE</promise>'
 PROMISE_BLOCKED_PATTERN='<promise>BLOCKED:[^<]*</promise>'
 PROMISE_DECIDE_PATTERN='<promise>DECIDE:[^<]*</promise>'
+PROMISE_TASK_DONE_PATTERN='<promise>TASK-[A-Za-z0-9._-]+:DONE</promise>'
 
 # Check if output contains a COMPLETE tag
 # Usage: if has_complete_tag "$output"; then ...
@@ -66,6 +69,35 @@ extract_decide_question() {
     # Extract content between DECIDE: and </promise>
     echo "$match" | sed 's/<promise>DECIDE://;s/<\/promise>//'
   fi
+}
+
+# Extract completed task IDs from TASK-DONE tags
+# Usage: extract_completed_task_ids "$output"
+# Returns: one task ID per line, de-duplicated in first-seen order
+extract_completed_task_ids() {
+  local output="$1"
+  echo "$output" \
+    | grep -oE "$PROMISE_TASK_DONE_PATTERN" \
+    | sed 's/<promise>//;s/:DONE<\/promise>//' \
+    | awk '!seen[$0]++'
+}
+
+# Format completed task IDs for compact display
+# Usage: task_ids=$(format_completed_task_ids "$output")
+# Returns: comma-separated task IDs, or empty if no task completion tags exist
+format_completed_task_ids() {
+  local output="$1"
+  extract_completed_task_ids "$output" | awk '
+    NF {
+      printf "%s%s", separator, $0
+      separator = ", "
+    }
+    END {
+      if (separator != "") {
+        printf "\n"
+      }
+    }
+  '
 }
 
 # Check if output contains any help-needed tag (BLOCKED or DECIDE)

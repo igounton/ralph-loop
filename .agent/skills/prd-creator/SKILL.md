@@ -19,8 +19,9 @@ This skill helps beginner-level developers.
 
 1. Receive an implementation description from the user
 2. Create detailed PRD documents through structured questioning
-3. Generate implementation task lists in JSON format for developers
-4. Write an overall description of the project. An executive summary that gives a high level overview of the app and its main features.
+3. Verify implementation prerequisites, including access, MCPs, docs, env variables, and test users
+4. Generate implementation task lists in JSON format for developers
+5. Write an overall description of the project. An executive summary that gives a high level overview of the app and its main features.
 
 ### Part 1: Implementation Description
 
@@ -37,6 +38,8 @@ You will need to ask clarifying questions to get a clear understanding of the im
 
 **What it does**:
 - Guides structured questioning to gather all requirements
+- Verifies project prerequisites before PRD finalization
+- Creates/updates `.env.local` with placeholder values only
 - Creates executive summary for validation
 - Researches competitive landscape
 - Generates comprehensive PRD.md with:
@@ -46,15 +49,17 @@ You will need to ask clarifying questions to get a clear understanding of the im
   - Competitive analysis
   - Core features and user flows
   - Technical stack recommendations
+  - Prerequisites and access
   - Security considerations
   - Assumptions and dependencies
 
 **Process**:
 1. Ask clarifying questions using `AskUserQuestion` tool
-2. Create executive summary for user approval
-3. Research competition via WebSearch
-4. Generate complete PRD
-5. Iterate based on feedback
+2. Verify prerequisites and create/update `.env.local` placeholders
+3. Create executive summary for user approval
+4. Research competition via WebSearch
+5. Generate complete PRD
+6. Iterate based on feedback
 
 **Read [PRD.md](PRD.md) for complete instructions.**
 
@@ -70,6 +75,7 @@ You will need to analyze the completed PRD and generate a comprehensive task lis
 
 **What it does**:
 - Analyzes the completed PRD
+- Generates `TASK-1` as mandatory prerequisite verification
 - Generates a complete list of implementation tasks in JSON format, covering all features and requirements from the PRD
 - Keeps the tasks small and manageable
 - Categorizes tasks by type (functional, ui-ux, api-endpoint, security, etc.)
@@ -97,17 +103,18 @@ The description should be short, concise and contain:
 **If user wants to create a PRD:**
 1. Read [PRD.md](PRD.md)
 2. Follow the PRD creation workflow
-3. If needed, update the overall description [SUMMARY.md](SUMMARY.md)
-4. After PRD completion, ask: "Would you like me to generate implementation tasks? See Part 2."
+3. Verify prerequisites and create/update `.env.local` with placeholder values only
+4. If needed, update the overall description [SUMMARY.md](SUMMARY.md)
+5. After PRD completion, ask: "Would you like me to generate implementation tasks? See Part 2."
 
 **If user wants implementation tasks for an existing PRD:**
 1. Read [JSON.md](JSON.md)
 2. Read the PRD file
-3. Generate comprehensive task list in JSON format
+3. Generate comprehensive task list in JSON format, starting with `TASK-1` prerequisite verification
 4. Save as `tasks.json`
 
 **If user wants both:**
-1. Complete PRD creation first [PRD.md](PRD.md)
+1. Complete PRD creation first [PRD.md](PRD.md), including prerequisite verification and `.env.local` placeholders
 2. Get user approval on PRD
 3. If needed, update the overall description [SUMMARY.md](SUMMARY.md)
 4. Proceed to generate implementation tasks [JSON.md](JSON.md)
@@ -144,6 +151,8 @@ If they are not present, warn the user and ask if they would like to create any 
 
 - Do not generate code - focus on documentation and task specification
 - Use AskUserQuestion extensively in Part 1 to clarify requirements
+- Never write real secret values to PRD, tasks, chat, logs, or `.env.local`; use placeholder values and tell the user to fill real values manually
 - In Part 2, generate comprehensive task lists (50-200+ tasks for typical projects)
+- In Part 2, always generate `TASK-1` as prerequisite verification before feature work
 - Always initialize tasks with `"passes": false` - never mark tasks complete during generation
 - Use available tools: AskUserQuestion, WebSearch, Sequential Thinking, Read

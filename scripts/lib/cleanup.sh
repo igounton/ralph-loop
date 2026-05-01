@@ -7,8 +7,18 @@
 # Runs on both normal exit (EXIT trap) and interrupt (called from handle_interrupt).
 # Ensures no orphan processes remain after script exits.
 
+# Tracks whether cleanup has already run during this process.
+# Both the EXIT trap and handle_interrupt may call cleanup, so this guard
+# prevents double-stopping the sandbox or removing temp files twice.
+CLEANUP_DONE=0
+
 # Cleanup function - kills background processes and removes temp files
 cleanup() {
+  if [ "$CLEANUP_DONE" = "1" ]; then
+    return 0
+  fi
+  CLEANUP_DONE=1
+
   # Kill spinner background process
   if [ -n "$SPINNER_PID" ] && kill -0 "$SPINNER_PID" 2>/dev/null; then
     kill "$SPINNER_PID" 2>/dev/null || true
@@ -17,8 +27,8 @@ cleanup() {
   SPINNER_PID=""
 
   # Kill Agent process tree if still running
-  # The process tree is: script -> bash -> docker sandbox run
-  # Killing just the script PID leaves the docker sandbox running
+  # The process tree is: script -> bash -> sbx run
+  # Killing just the script PID leaves the sbx running
   if [ -n "$AGENT_PID" ] && kill -0 "$AGENT_PID" 2>/dev/null; then
     # Kill child processes first (bash -> docker), then the script process
     pkill -TERM -P "$AGENT_PID" 2>/dev/null || true
@@ -27,26 +37,19 @@ cleanup() {
   fi
   AGENT_PID=""
 
-  # Stop all running Docker sandboxes for this workspace
-  # Finds sandboxes by matching the workspace path, regardless of agent prefix
-  if command -v docker &>/dev/null && command -v jq &>/dev/null; then
-    local sandboxes
-    sandboxes=$(docker sandbox ls --json 2>/dev/null \
-      | jq -r --arg ws "$SCRIPT_DIR" '(.vms // .sandboxes // [])[] | select(.status == "running" and (.workspaces[] == $ws)) | .name' 2>/dev/null)
-
-    if [ -n "$sandboxes" ]; then
-      echo -e "  ${Y}📦 Stopping sandbox...${R}"
-      # Stop all matching sandboxes (pass all names at once)
-      docker sandbox stop $sandboxes 2>/dev/null &
-      local stop_pid=$!
-      # Timeout after 5 seconds to avoid hanging on exit
-      ( sleep 5 && kill "$stop_pid" 2>/dev/null ) &>/dev/null &
-      local timeout_pid=$!
-      if wait "$stop_pid" 2>/dev/null; then
-        echo -e "  ${GR}✅ Sandbox stopped${R}"
-      fi
-      kill "$timeout_pid" 2>/dev/null || true
+  # Stop only the deterministic sandbox for this Ralph invocation.
+  if [ -n "$RALPH_SANDBOX_NAME" ] && command -v sbx &>/dev/null; then
+    echo -e "  ${Y}📦 Stopping sandbox ${RALPH_SANDBOX_NAME}...${R}"
+    sbx stop "$RALPH_SANDBOX_NAME" 2>/dev/null &
+    local stop_pid=$!
+    # Timeout after 5 seconds to avoid hanging on exit
+    ( sleep 5 && kill "$stop_pid" 2>/dev/null ) &>/dev/null &
+    local timeout_pid=$!
+    if wait "$stop_pid" 2>/dev/null; then
+      echo -e "  ${GR}✅ Sandbox stopped${R}"
     fi
+    kill "$timeout_pid" 2>/dev/null || true
+    wait "$timeout_pid" 2>/dev/null || true
   fi
 
   # Remove temporary files
@@ -66,9 +69,9 @@ handle_interrupt() {
 
   if [ $time_diff -lt 3 ]; then
     # Second CTRL+C within 3 seconds - exit
+    # The EXIT trap will run cleanup exactly once.
     echo ""
     echo -e "${Y}Exiting...${R}"
-    cleanup
     exit 130
   else
     # First CTRL+C - show warning and update timestamp

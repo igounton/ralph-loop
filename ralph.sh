@@ -22,6 +22,7 @@ source "$SCRIPT_DIR/scripts/lib/output.sh"
 source "$SCRIPT_DIR/scripts/lib/cleanup.sh"
 source "$SCRIPT_DIR/scripts/lib/promise.sh"
 source "$SCRIPT_DIR/scripts/lib/notify.sh"
+source "$SCRIPT_DIR/scripts/lib/agents.sh"
 source "$SCRIPT_DIR/scripts/lib/display.sh"
 source "$SCRIPT_DIR/scripts/lib/args.sh"
 
@@ -47,8 +48,10 @@ FULL_OUTPUT_FILE=""
 trap cleanup EXIT
 trap handle_interrupt INT
 
-# Parse arguments (sets MAX_ITERATIONS, ONCE_FLAG)
+# Parse arguments (sets MAX_ITERATIONS, ONCE_FLAG, RALPH_AGENT, AGENT_EXTRA_ARGS)
 parse_arguments "$@"
+RALPH_AGENT_NAME=$(agent_display_name "$RALPH_AGENT")
+RALPH_SANDBOX_NAME=$(build_sandbox_name "$RALPH_AGENT" "$SCRIPT_DIR")
 
 # Initialize progress file if it doesn't exist
 if [ ! -f "$PROGRESS_FILE" ]; then
@@ -64,7 +67,7 @@ check_history_dir
 check_ansi_support
 
 show_ralph
-echo -e " ${C}Starting Ralph${R} ・ ${Y}v$VERSION${R} ・ Max iterations: ${Y}$MAX_ITERATIONS${R}"
+echo -e " ${C}Starting Ralph${R} ・ ${Y}v$VERSION${R} ・ Agent: ${Y}$RALPH_AGENT_NAME${R} ・ Sandbox: ${Y}$RALPH_SANDBOX_NAME${R} ・ Max iterations: ${Y}$MAX_ITERATIONS${R}"
 echo ""
 
 for i in $(seq 1 $MAX_ITERATIONS); do
@@ -93,12 +96,13 @@ $(cat $SCRIPT_DIR/.agent/PROMPT.md)"
   OUTPUT_FILE=$(mktemp)
   FULL_OUTPUT_FILE=$(mktemp)
 
-  # Use script to provide pseudo-TTY for docker sandbox.
+  # Use script to provide pseudo-TTY for sbx.
   # This is the main command loop.
   export PROMPT_CONTENT
   export DOCKER_DEFAULT_PLATFORM=linux/amd64 # Needed for Playwright.
 
-  script -q "$OUTPUT_FILE" bash -c 'docker sandbox run claude . -- --effort max --model opus --output-format stream-json --verbose -p "$PROMPT_CONTENT"' >/dev/null 2>&1 &
+  AGENT_COMMAND=$(build_agent_command "$RALPH_AGENT" "$RALPH_SANDBOX_NAME")
+  script -q "$OUTPUT_FILE" bash -c "$AGENT_COMMAND" >/dev/null 2>&1 &
   AGENT_PID=$!
 
   # Track position in output file for incremental reading
@@ -176,7 +180,7 @@ $(cat $SCRIPT_DIR/.agent/PROMPT.md)"
     echo -e "  Invalid API key. Please authenticate inside the Docker sandbox."
     echo -e ""
     echo -e "  Run the following command and follow the login instructions:"
-    echo -e "  ${C}docker sandbox run claude . --${R}"
+    echo -e "  ${C}$(agent_login_command "$RALPH_AGENT" "$RALPH_SANDBOX_NAME")${R}"
     echo -e "${RD}░░▒▒▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▒▒░░${R}"
     rm -f "$OUTPUT_FILE" "$FULL_OUTPUT_FILE"
     exit $EXIT_AUTH_ERROR
@@ -227,11 +231,15 @@ $(cat $SCRIPT_DIR/.agent/PROMPT.md)"
   AVG_STR=$(format_duration $ITERATION_AVG)
   DELTA_STR=$(format_delta $ITERATION_DURATION $PREV_ITERATION_TIME)
   PREV_ITERATION_TIME=$ITERATION_DURATION
+  COMPLETED_TASK_IDS=$(format_completed_task_ids "$(printf '%s\n%s' "$OUTPUT" "$FINAL_SUMMARY")")
+  TASK_IDS_SEGMENT=""
+  if [ -n "$COMPLETED_TASK_IDS" ]; then
+    TASK_IDS_SEGMENT=" ${C}│${R} Tasks: ${Y}$COMPLETED_TASK_IDS${R}"
+  fi
 
   # Check for completion signal
-  # Note: We check both $OUTPUT and $FINAL_SUMMARY because the JSON parsing
-  # in parse_json_content truncates text at escaped quotes, but FINAL_SUMMARY
-  # is correctly extracted using jq from the result message
+  # Note: We check both $OUTPUT and $FINAL_SUMMARY because some agents emit
+  # structured output where FINAL_SUMMARY has a cleaner final message.
   if has_complete_tag "$OUTPUT" || has_complete_tag "$FINAL_SUMMARY"; then
     ELAPSED=$(($(date +%s) - START_TIME))
     ELAPSED_STR=$(format_duration $ELAPSED)
@@ -240,9 +248,9 @@ $(cat $SCRIPT_DIR/.agent/PROMPT.md)"
     echo -e "  🎉 ${GR}Ralph completed all tasks!${R}"
     echo -e "  ✅ Finished at iteration ${GR}$i${R} of ${GR}$MAX_ITERATIONS${R}"
     if [ -n "$DELTA_STR" ]; then
-      echo -e "  ⏱️  Iteration $i: ${Y}$ITERATION_STR${R} ($DELTA_STR) ${C}│${R} Average: ${Y}$AVG_STR${R}"
+      echo -e "  ⏱️  Iteration $i: ${Y}$ITERATION_STR${R} ($DELTA_STR) ${C}│${R} Average: ${Y}$AVG_STR${R}$TASK_IDS_SEGMENT"
     else
-      echo -e "  ⏱️  Iteration $i: ${Y}$ITERATION_STR${R} ${C}│${R} Average: ${Y}$AVG_STR${R}"
+      echo -e "  ⏱️  Iteration $i: ${Y}$ITERATION_STR${R} ${C}│${R} Average: ${Y}$AVG_STR${R}$TASK_IDS_SEGMENT"
     fi
     echo -e "  ⏱️  Total time: ${Y}$ELAPSED_STR${R}"
     display_session_step_totals
@@ -262,9 +270,9 @@ $(cat $SCRIPT_DIR/.agent/PROMPT.md)"
     show_notification "Ralph - BLOCKED" "$BLOCKED_REASON"
     display_blocked_message "$BLOCKED_REASON" "$i"
     if [ -n "$DELTA_STR" ]; then
-      echo -e "  ⏱️  Iteration $i: ${Y}$ITERATION_STR${R} ($DELTA_STR) ${C}│${R} Average: ${Y}$AVG_STR${R}"
+      echo -e "  ⏱️  Iteration $i: ${Y}$ITERATION_STR${R} ($DELTA_STR) ${C}│${R} Average: ${Y}$AVG_STR${R}$TASK_IDS_SEGMENT"
     else
-      echo -e "  ⏱️  Iteration $i: ${Y}$ITERATION_STR${R} ${C}│${R} Average: ${Y}$AVG_STR${R}"
+      echo -e "  ⏱️  Iteration $i: ${Y}$ITERATION_STR${R} ${C}│${R} Average: ${Y}$AVG_STR${R}$TASK_IDS_SEGMENT"
     fi
     echo -e "  ⏱️  Total time: ${Y}$ELAPSED_STR${R}"
     display_session_step_totals
@@ -283,9 +291,9 @@ $(cat $SCRIPT_DIR/.agent/PROMPT.md)"
     show_notification "Ralph - Decision Needed" "$DECIDE_QUESTION"
     display_decide_message "$DECIDE_QUESTION" "$i"
     if [ -n "$DELTA_STR" ]; then
-      echo -e "  ⏱️  Iteration $i: ${Y}$ITERATION_STR${R} ($DELTA_STR) ${C}│${R} Average: ${Y}$AVG_STR${R}"
+      echo -e "  ⏱️  Iteration $i: ${Y}$ITERATION_STR${R} ($DELTA_STR) ${C}│${R} Average: ${Y}$AVG_STR${R}$TASK_IDS_SEGMENT"
     else
-      echo -e "  ⏱️  Iteration $i: ${Y}$ITERATION_STR${R} ${C}│${R} Average: ${Y}$AVG_STR${R}"
+      echo -e "  ⏱️  Iteration $i: ${Y}$ITERATION_STR${R} ${C}│${R} Average: ${Y}$AVG_STR${R}$TASK_IDS_SEGMENT"
     fi
     echo -e "  ⏱️  Total time: ${Y}$ELAPSED_STR${R}"
     display_session_step_totals
@@ -297,9 +305,9 @@ $(cat $SCRIPT_DIR/.agent/PROMPT.md)"
   ELAPSED_STR=$(format_duration $ELAPSED)
 
   if [ -n "$DELTA_STR" ]; then
-    echo -e "${G}  └── ✓ Iteration $i complete${R} ${C}│${R} Iteration: ${Y}$ITERATION_STR${R} ($DELTA_STR) ${C}│${R} Average: ${Y}$AVG_STR${R} ${C}│${R} Total: ${Y}$ELAPSED_STR${R}"
+    echo -e "${G}  └── ✓ Iteration $i complete${R}$TASK_IDS_SEGMENT ${C}│${R} Iteration: ${Y}$ITERATION_STR${R} ($DELTA_STR) ${C}│${R} Average: ${Y}$AVG_STR${R} ${C}│${R} Total: ${Y}$ELAPSED_STR${R}"
   else
-    echo -e "${G}  └── ✓ Iteration $i complete${R} ${C}│${R} Iteration: ${Y}$ITERATION_STR${R} ${C}│${R} Average: ${Y}$AVG_STR${R} ${C}│${R} Total: ${Y}$ELAPSED_STR${R}"
+    echo -e "${G}  └── ✓ Iteration $i complete${R}$TASK_IDS_SEGMENT ${C}│${R} Iteration: ${Y}$ITERATION_STR${R} ${C}│${R} Average: ${Y}$AVG_STR${R} ${C}│${R} Total: ${Y}$ELAPSED_STR${R}"
   fi
 
   # Display per-iteration step times
