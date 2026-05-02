@@ -2,6 +2,8 @@
 
 [![@pageai/ralph-loop version](https://img.shields.io/npm/v/@pageai/ralph-loop?label=npm&style=flat)](https://www.npmjs.com/package/@pageai/ralph-loop)
 
+📚 Full docs: [ralphloop.sh](https://ralphloop.sh)
+
 Ralph is a long-running AI agent loop. Ralph automates software development tasks by iteratively working through a task list until completion. This allows for long running agent loops, effectively enabling AI to code for days at a time.
 
 This is an implementation that actually works, containing a hackable script so you can configure it to your env and favorite agentic AI CLI. It's set up by default to use Claude Code in Docker Sandboxes, and supports [multiple Docker Sandboxes agents](#running-with-a-different-agentic-cli).
@@ -61,6 +63,8 @@ Run this in your project's directory to install Ralph.
 npx @pageai/ralph-loop
 ```
 
+> Docs: [ralphloop.sh](https://ralphloop.sh)
+
 ### 2️⃣ Step 2: Create a PRD + task list
 
 Use the `prd-creator` skill to generate a PRD from your requirements.<br/>
@@ -116,18 +120,25 @@ Install and sign in to Docker Sandboxes first. See Docker's [AI overview](https:
 Authenticate your chosen Docker Sandboxes agent before running Ralph. Claude is the default:
 
 ```bash
-sbx run --name <ralph-sandbox-name> claude .
+./ralph.sh --login
 ```
 
-To use a different supported agent, replace `claude` with `codex`, `copilot`, `cursor`, `gemini`, or `opencode`:
+Ralph prints all supported login commands, then opens the selected agent inside the correctly named sandbox. To log in to a different supported agent, pass `--agent`:
 
 ```bash
-sbx run --name <ralph-sandbox-name> codex .
+./ralph.sh --login --agent codex
 ```
 
-And follow the instructions to log in to that agent. Ralph names sandboxes as `ralph-<agent>-<current-dir>-<hash8>`, for example `ralph-claude-my-app-a1b2c3d4`; the exact name is printed when Ralph starts and in authentication error messages.
+Follow the instructions to log in to that agent. Ralph names sandboxes as `ralph-<agent>-<current-dir>-<hash8>`, for example `ralph-claude-my-app-a1b2c3d4`. To print the exact sandbox name without starting the loop, run:
+
+```bash
+./ralph.sh --print-name
+./ralph.sh --print-name --agent cursor
+```
 
 👉 Answer "Yes" to `Bypass Permissions mode`, that's the exact reason why you are using the Docker sandbox.
+
+> **Alternative: API keys** — you can configure API keys for supported agents instead of interactive login, but this is usually more expensive and not recommended. See Docker's [supported agents docs](https://docs.docker.com/ai/sandboxes/agents/) for per-agent setup details.
 
 > If you want to use a different agentic CLI, see [Running with a different agentic CLI](#running-with-a-different-agentic-cli).
 
@@ -156,6 +167,14 @@ And follow the instructions to log in to that agent. Ralph names sandboxes as `r
 # Run with a different supported agent
 ./ralph.sh --agent codex
 ./ralph.sh -a cursor -n 5
+
+# Log in to an agent inside Ralph's deterministic sandbox
+./ralph.sh --login
+./ralph.sh --login --agent cursor
+
+# Print the deterministic sandbox name
+./ralph.sh --print-name
+./ralph.sh --print-name --agent codex
 
 # Pass extra options to the selected agent
 ./ralph.sh --agent codex -- --model gpt-5.5
@@ -337,6 +356,8 @@ Skills are symlinked from `.agent/skills/` to multiple locations for cross-tool 
 ### Docker Sandboxes
 
 Docker Sandboxes runs coding agents in isolated microVMs. Ralph uses the standalone `sbx` CLI and starts agents with a deterministic `--name` so the sandbox can be reused and stopped cleanly.
+
+Use `./ralph.sh --login` to authenticate inside the correct named sandbox. Use `./ralph.sh --print-name` if you only need the deterministic sandbox name for debugging.
 
 Useful Docker references:
 - [Docker AI overview](https://docs.docker.com/ai-overview/) explains how Docker Sandboxes fits with Gordon, Model Runner, MCP Toolkit, and Docker Agent.
