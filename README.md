@@ -136,6 +136,13 @@ Follow the instructions to log in to that agent. Ralph names sandboxes as `ralph
 ./ralph.sh --print-name --agent cursor
 ```
 
+Once the sandbox exists (after the first `--login` or after Ralph runs at least once), publish your dev server port to the host with `./ralph.sh --ports`. The port is captured from the dev-server URL you set during install and stored in `RALPH_DEFAULT_PORTS` in `ralph.sh`:
+
+```bash
+./ralph.sh --ports
+./ralph.sh --ports --agent codex
+```
+
 👉 Answer "Yes" to `Bypass Permissions mode`, that's the exact reason why you are using the Docker sandbox.
 
 > **Alternative: API keys** — you can configure API keys for supported agents instead of interactive login, but this is usually more expensive and not recommended. See Docker's [supported agents docs](https://docs.docker.com/ai/sandboxes/agents/) for per-agent setup details.
@@ -171,6 +178,10 @@ Follow the instructions to log in to that agent. Ralph names sandboxes as `ralph
 # Log in to an agent inside Ralph's deterministic sandbox
 ./ralph.sh --login
 ./ralph.sh --login --agent cursor
+
+# Publish the configured dev port to the selected agent sandbox
+./ralph.sh --ports
+./ralph.sh --ports --agent codex
 
 # Print the deterministic sandbox name
 ./ralph.sh --print-name
@@ -525,6 +536,8 @@ sbx exec -it <sandbox-name> bash
 cd /path/to/your/project # this is the same path as the path in the root machine, e.g. /Users/your-username/Documents/your-project
 claude # or codex, copilot, cursor, gemini, opencode
 ```
+
+Re-running `./ralph.sh`, `./ralph.sh --login`, or `./ralph.sh --ports` is safe at any point — Ralph probes `sbx ls` and emits `sbx run --name ... <agent> .` only when the sandbox doesn't exist yet, and `sbx run <sandbox-name>` to reattach afterwards. The first form is create-only and would otherwise error with `--name can only be used when creating a new sandbox`. See [RALPH.md](RALPH.md#create-vs-attach-lifecycle) for the full lifecycle.
 
 ## License
 
