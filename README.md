@@ -37,8 +37,10 @@ This is an implementation that actually works, containing a hackable script so y
   - [Vitest configuration](#vitest-configuration)
   - [Running with a different agentic CLI](#running-with-a-different-agentic-cli)
   - [Starting from scratch](#starting-from-scratch)
-  - [Debugging](#debugging)
-- [How to inspect the sandbox and debug](#how-to-inspect-the-sandbox-and-debug)
+- [Debugging](#debugging)
+  - [How to inspect the sandbox and debug](#how-to-inspect-the-sandbox-and-debug)
+  - [Allowing network access](#allowing-network-access)
+  - [Authentication issues in Sandboxes / Login not persisting](#authentication-issues-in-sandboxes--login-not-persisting)
 - [License](#license)
 
 ---------------------------------
@@ -508,9 +510,9 @@ npm i @vitejs/plugin-react @testing-library/dom @testing-library/jest-dom @testi
 
 It is recommended that you add skills for your specific language and framework. See [skills.sh](https://skills.sh) to discover existing skills.
 
-### Debugging
+## Debugging
 
-## How to inspect the sandbox and debug
+### How to inspect the sandbox and debug
 
 You might be wondering... if this is not a Docker container, how can you see what's going on inside Docker!?
 How to debug/install things?
@@ -542,7 +544,7 @@ claude # or codex, copilot, cursor, gemini, opencode
 
 Re-running `./ralph.sh`, `./ralph.sh --login`, or `./ralph.sh --ports` is safe at any point — Ralph probes `sbx ls` and emits `sbx run --name ... <agent> .` only when the sandbox doesn't exist yet, and `sbx run <sandbox-name>` to reattach afterwards. The first form is create-only and would otherwise error with `--name can only be used when creating a new sandbox`. See [RALPH.md](RALPH.md#create-vs-attach-lifecycle) for the full lifecycle.
 
-## Allowing network access
+### Allowing network access
 
 Docker Sandboxes block outbound HTTP/HTTPS by default (deny-by-default, or a "Balanced" allowlist depending on the policy you chose at install). If the agent can't reach a host it needs — `npm install` fails, an API call is refused, package downloads hang — grant access with `sbx policy`. Changes take effect immediately and persist across sandbox restarts.
 
@@ -587,6 +589,30 @@ Domain matching notes:
 - If a domain matches both an allow and a deny rule, the deny rule wins.
 
 See Docker's [Policies](https://docs.docker.com/ai/sandboxes/security/policy/) and [Network policies](https://docs.docker.com/ai/sandboxes/network-policies/) docs for the full reference.
+
+### Authentication issues in Sandboxes / Login not persisting
+
+Agentic CLIs might change their auth mechanism over time and Docker Sandboxes might fail persisting OAuth tokens (when you perform `/login` inside the sandbox shell).
+
+Fortunately, Docker Sandboxes also forward env variables **when you create a sandbox**.
+
+Here's how to set up authentication using an API key:
+
+1. Important 🚨: delete the sandbox that needs authentication. Env vars are only picked up when you create a new sandbox.
+
+2. Go to [Docker security credentials](https://docs.docker.com/ai/sandboxes/security/credentials/) to find each env variables you need. For example, anthropic needs `ANTHROPIC_API_KEY`, OpenAI need `OPENAI_API_KEY`, Cursor needs `CURSOR_API_KEY`, etc.
+
+3. Export the env variables in your shell. For example:
+
+```bash
+export ANTHROPIC_API_KEY=your-anthropic-api-key
+export OPENAI_API_KEY=your-openai-api-key
+export CURSOR_API_KEY=your-cursor-api-key
+```
+
+> If you use bash, you can export the env variables in your `.bashrc` file, or if you use zsh, you can export the env variables in your `.zshrc` file.
+
+4. Recreate the sandbox by running `./ralph.sh --login` again.
 
 ## License
 
