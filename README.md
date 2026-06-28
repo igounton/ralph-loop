@@ -52,7 +52,11 @@ This is an implementation that actually works, containing a hackable script so y
 I recommend using a CLI to bootstrap your project with the necessary tools and dependencies, e.g.:
 
 ```bash
+# for a Tanstack app:
 npx @tanstack/cli create lib --add-ons eslint,form,tanstack-query,nitro --no-git
+
+# or for a Next.js app
+npx create-next-app@latest my-app --typescript --tailwind --eslint --app
 ```
 
 > If you must start from a blank slate, which is not recommended, see [Starting from scratch](#starting-from-scratch). You can also go for a more barebone start by running `npx create-vite@latest src --template react-ts`
